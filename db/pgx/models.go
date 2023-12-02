@@ -5,12 +5,14 @@
 package pgx
 
 import (
-	"github.com/jackc/pgx/v5/pgtype"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 type Page struct {
-	ID        pgtype.UUID
-	UpdatedAt pgtype.Timestamp
+	ID        uuid.UUID
+	UpdatedAt time.Time
 	Title     string
 	Text      string
 }

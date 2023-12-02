@@ -5,10 +5,12 @@ VALUES ($1, $2, $3, $4);
 -- name: GetPage :one
 SELECT * FROM pages WHERE id = $1;
 
--- name: ListPage :many
-SELECT * FROM pages;
+-- name: ListPages :many
+SELECT * FROM pages
+WHERE sqlc.narg('cursor')::uuid IS NULL or id > sqlc.narg('cursor')
+LIMIT sqlc.arg('limit');
 
--- name: ListIDs :many
+-- name: ListPageIDs :many
 SELECT id FROM pages
 WHERE sqlc.narg('cursor')::uuid IS NULL OR id > sqlc.narg('cursor')
-LIMIT 1000;
+LIMIT sqlc.arg('limit');

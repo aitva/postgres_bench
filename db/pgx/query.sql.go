@@ -7,8 +7,9 @@ package pgx
 
 import (
 	"context"
+	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/google/uuid"
 )
 
 const createPage = `-- name: CreatePage :exec
@@ -17,8 +18,8 @@ VALUES ($1, $2, $3, $4)
 `
 
 type CreatePageParams struct {
-	ID        pgtype.UUID
-	UpdatedAt pgtype.Timestamp
+	ID        uuid.UUID
+	UpdatedAt time.Time
 	Title     string
 	Text      string
 }
@@ -37,7 +38,7 @@ const getPage = `-- name: GetPage :one
 SELECT id, updated_at, title, text FROM pages WHERE id = $1
 `
 
-func (q *Queries) GetPage(ctx context.Context, id pgtype.UUID) (Page, error) {
+func (q *Queries) GetPage(ctx context.Context, id uuid.UUID) (Page, error) {
 	row := q.db.QueryRow(ctx, getPage, id)
 	var i Page
 	err := row.Scan(
@@ -49,21 +50,26 @@ func (q *Queries) GetPage(ctx context.Context, id pgtype.UUID) (Page, error) {
 	return i, err
 }
 
-const listIDs = `-- name: ListIDs :many
+const listPageIDs = `-- name: ListPageIDs :many
 SELECT id FROM pages
 WHERE $1::uuid IS NULL OR id > $1
-LIMIT 1000
+LIMIT $2
 `
 
-func (q *Queries) ListIDs(ctx context.Context, cursor pgtype.UUID) ([]pgtype.UUID, error) {
-	rows, err := q.db.Query(ctx, listIDs, cursor)
+type ListPageIDsParams struct {
+	Cursor uuid.NullUUID
+	Limit  int32
+}
+
+func (q *Queries) ListPageIDs(ctx context.Context, arg ListPageIDsParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listPageIDs, arg.Cursor, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []pgtype.UUID
+	var items []uuid.UUID
 	for rows.Next() {
-		var id pgtype.UUID
+		var id uuid.UUID
 		if err := rows.Scan(&id); err != nil {
 			return nil, err
 		}
@@ -75,12 +81,19 @@ func (q *Queries) ListIDs(ctx context.Context, cursor pgtype.UUID) ([]pgtype.UUI
 	return items, nil
 }
 
-const listPage = `-- name: ListPage :many
+const listPages = `-- name: ListPages :many
 SELECT id, updated_at, title, text FROM pages
+WHERE $1::uuid IS NULL or id > $1
+LIMIT $2
 `
 
-func (q *Queries) ListPage(ctx context.Context) ([]Page, error) {
-	rows, err := q.db.Query(ctx, listPage)
+type ListPagesParams struct {
+	Cursor uuid.NullUUID
+	Limit  int32
+}
+
+func (q *Queries) ListPages(ctx context.Context, arg ListPagesParams) ([]Page, error) {
+	rows, err := q.db.Query(ctx, listPages, arg.Cursor, arg.Limit)
 	if err != nil {
 		return nil, err
 	}

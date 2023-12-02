@@ -50,14 +50,19 @@ func (q *Queries) GetPage(ctx context.Context, id uuid.UUID) (Page, error) {
 	return i, err
 }
 
-const listIDs = `-- name: ListIDs :many
+const listPageIDs = `-- name: ListPageIDs :many
 SELECT id FROM pages
 WHERE $1::uuid IS NULL OR id > $1
-LIMIT 1000
+LIMIT $2
 `
 
-func (q *Queries) ListIDs(ctx context.Context, cursor uuid.NullUUID) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, listIDs, cursor)
+type ListPageIDsParams struct {
+	Cursor uuid.NullUUID
+	Limit  int32
+}
+
+func (q *Queries) ListPageIDs(ctx context.Context, arg ListPageIDsParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, listPageIDs, arg.Cursor, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -79,12 +84,19 @@ func (q *Queries) ListIDs(ctx context.Context, cursor uuid.NullUUID) ([]uuid.UUI
 	return items, nil
 }
 
-const listPage = `-- name: ListPage :many
+const listPages = `-- name: ListPages :many
 SELECT id, updated_at, title, text FROM pages
+WHERE $1::uuid IS NULL or id > $1
+LIMIT $2
 `
 
-func (q *Queries) ListPage(ctx context.Context) ([]Page, error) {
-	rows, err := q.db.QueryContext(ctx, listPage)
+type ListPagesParams struct {
+	Cursor uuid.NullUUID
+	Limit  int32
+}
+
+func (q *Queries) ListPages(ctx context.Context, arg ListPagesParams) ([]Page, error) {
+	rows, err := q.db.QueryContext(ctx, listPages, arg.Cursor, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
